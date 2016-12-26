@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Example Recorder</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
+    <style>
+        .content {
+            position: relative;
+            width: 600px;
+            margin: 0 auto;
+        }
+        .content video {
+            width: 100%;
+            display: block;
+        }
+        .loading:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 10px solid #f3f3f3;
+            border-top: 10px solid #16a086;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <button id="start" class="btn" disabled>start</button>
+    <button id="stop" class="btn" disabled>stop</button>
+</div>
+<div style="float:left">
+    <video id="source" width="600px" height="480px" autoplay></video>
+</div>
+<div id="result-container" class="content">
+    <video id="result" width="600px" height="480px" controls></video>
+    <div class="loader"></div>
+</div>
+
+<script>
+    AWS.config.update({
+        region: 'eu-west-1',
+        credentials: new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'eu-west-1:7226bd45-eee4-4927-bc69-3972c02ba0ac',
+        })
+    });
+
+    const api = 'https://182qx7479a.execute-api.eu-west-1.amazonaws.com/test';
+    const s3 = new AWS.S3({ params: { Bucket: 'media-recording-test-1' } });
+    const source = document.getElementById('source');
+    const result = document.getElementById('result');
+    const resultContainer = document.getElementById('result-container');
+    const start = document.getElementById('start');
+    const stop = document.getElementById('stop');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            let prefix;
+            let chain;
+            const recorder = new MediaRecorder(stream);
+            recorder.ondataavailable = (e) => {
+                chain = chain.then((result) => new Promise((resolve, reject) => {
+                    s3.upload({
+                        Key: `${prefix}/part_${Date.now()}`,
+                        Body: e.data
+                    }, (err, data) => {
+                        console.log(err, data);
+                        if (err) return reject(err);
+                        resolve(result.concat(data.key));
+                    });
+                }));
+            };
+            start.onclick = () => {
+                start.disabled = true;
+                chain = Promise.resolve([]);
+                fetch(`${api}/uuid`)
+                    .then((res) => res.json())
+                    .then((uuid) => prefix = uuid)
+                    .then(() => recorder.start(3000));
+            };
+            stop.onclick = () => {
+                stop.disabled = true;
+                resultContainer.classList.add('loading');
+                recorder.stop();
+            };
+            recorder.onstart = () => stop.disabled = false;
+            recorder.onstop = () => {
+                start.disabled = false;
+                chain.then((parts) => {
+                    fetch(`${api}/join`, {
+                        method: 'post',
+                        body: JSON.stringify({
+                            parts,
+                            key: `${prefix}/result.webm`
+                        })
+                    })
+                        .then((res) => res.json())
+                        .then((json) => fetch(`${api}/process`, {
+                            method: 'post',
+                            body: JSON.stringify({
+                                src: json.Key,
+                                dst: `${prefix}/result_processed.webm`
+                            })
+                        }))
+                        .then((res) => res.json())
+                        .then((json) => {
+                            resultContainer.classList.remove('loading');
+                            result.src = json.Location;
+                        });
+                });
+            };
+            source.src = URL.createObjectURL(stream);
+            start.disabled = false;
+        });
+</script>
+</body>
+</html>
