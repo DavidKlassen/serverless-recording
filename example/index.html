@@ -9,20 +9,14 @@
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
     <style>
         .content {
-            position: relative;
             width: 600px;
-            margin: 0 auto;
-        }
-        .content video {
-            width: 100%;
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .loading:before {
             content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             border: 10px solid #f3f3f3;
             border-top: 10px solid #16a086;
             border-radius: 50%;
@@ -46,7 +40,6 @@
 </div>
 <div id="result-container" class="content">
     <video id="result" width="600px" height="480px" controls></video>
-    <div class="loader"></div>
 </div>
 
 <script>
@@ -67,27 +60,27 @@
 
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
-            let prefix;
-            let chain;
+            let id;
+            let chunks;
             const recorder = new MediaRecorder(stream);
             recorder.ondataavailable = (e) => {
-                chain = chain.then((result) => new Promise((resolve, reject) => {
+                chunks.push(new Promise((resolve, reject) => {
                     s3.upload({
-                        Key: `${prefix}/part_${Date.now()}`,
+                        Key: `${id}/part_${Date.now()}`,
                         Body: e.data
                     }, (err, data) => {
                         console.log(err, data);
                         if (err) return reject(err);
-                        resolve(result.concat(data.key));
+                        resolve(data);
                     });
                 }));
             };
             start.onclick = () => {
                 start.disabled = true;
-                chain = Promise.resolve([]);
-                fetch(`${api}/uuid`)
+                chunks = [];
+                fetch(`${api}/session`, { method: 'post' })
                     .then((res) => res.json())
-                    .then((uuid) => prefix = uuid)
+                    .then((uuid) => id = uuid)
                     .then(() => recorder.start(3000));
             };
             stop.onclick = () => {
@@ -98,28 +91,16 @@
             recorder.onstart = () => stop.disabled = false;
             recorder.onstop = () => {
                 start.disabled = false;
-                chain.then((parts) => {
-                    fetch(`${api}/join`, {
+                Promise.all(chunks)
+                    .then(() => fetch(`${api}/join`, {
                         method: 'post',
-                        body: JSON.stringify({
-                            parts,
-                            key: `${prefix}/result.webm`
-                        })
-                    })
-                        .then((res) => res.json())
-                        .then((json) => fetch(`${api}/process`, {
-                            method: 'post',
-                            body: JSON.stringify({
-                                src: json.Key,
-                                dst: `${prefix}/result_processed.webm`
-                            })
-                        }))
-                        .then((res) => res.json())
-                        .then((json) => {
-                            resultContainer.classList.remove('loading');
-                            result.src = json.Location;
-                        });
-                });
+                        body: JSON.stringify({ id })
+                    }))
+                    .then((res) => res.json())
+                    .then((json) => {
+                        resultContainer.classList.remove('loading');
+                        result.src = json.Location;
+                    });
             };
             source.src = URL.createObjectURL(stream);
             start.disabled = false;
