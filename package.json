@@ -32,7 +32,8 @@
     "clean": "rimraf build/*",
     "copy": "cp project.json.tpl build/project.json",
     "build": "npm run clean && npm run copy && webpack && chmod +x build/functions/**/*.bin",
-    "deploy": "npm run build && apex -C build deploy"
+    "deploy:apex": "apex -C build deploy",
+    "deploy": "npm run build && npm run deploy:apex"
   },
   "repository": {
     "type": "git",

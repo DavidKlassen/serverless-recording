@@ -1,3 +1,8 @@
+/**
+ * ffmpeg command wrapper.
+ */
+
+
 import {exec} from 'child_process';
 import ffmpegBin from '../../bin/ffmpeg';
 
