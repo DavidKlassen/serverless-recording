@@ -7,9 +7,9 @@ export default (input, output, args) => {
 
     return new Promise((resolve, reject) => {
         exec(cmd, (err) => {
-            if (err) return reject();
+            if (err) return reject(err);
 
-            return resolve();
+            return resolve(output);
         });
     });
 };

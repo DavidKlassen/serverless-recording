@@ -18,6 +18,24 @@ const config = {
     }
 };
 
+const join = Object.assign({}, config, {
+    entry: './src/functions/join',
+    output: {
+        path: './build/functions/join',
+        filename: 'index.js',
+        libraryTarget: 'commonjs2'
+    }
+});
+
+const reindex = Object.assign({}, config, {
+    entry: './src/functions/reindex',
+    output: {
+        path: './build/functions/reindex',
+        filename: 'index.js',
+        libraryTarget: 'commonjs2'
+    }
+});
+
 const thumb = Object.assign({}, config, {
     entry: './src/functions/thumb',
     output: {
@@ -37,6 +55,8 @@ const uuid = Object.assign({}, config, {
 });
 
 module.exports = [
+    join,
+    reindex,
     thumb,
     uuid
 ];
