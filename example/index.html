@@ -7,54 +7,16 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Example Recorder</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
-    <style>
-        .content {
-            width: 600px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .loading:before {
-            content: '';
-            position: absolute;
-            border: 10px solid #f3f3f3;
-            border-top: 10px solid #16a086;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
 </head>
 <body>
 <div>
     <button id="start" class="btn" disabled>start</button>
     <button id="stop" class="btn" disabled>stop</button>
 </div>
-<div style="float:left">
-    <video id="source" width="600px" height="480px" autoplay></video>
-</div>
-<div id="result-container" class="content">
-    <video id="result" width="600px" height="480px" controls></video>
-</div>
-
+<video id="source" width="600px" height="480px" autoplay></video>
 <script>
-    AWS.config.update({
-        region: 'eu-west-1',
-        credentials: new AWS.CognitoIdentityCredentials({
-            IdentityPoolId: 'eu-west-1:7226bd45-eee4-4927-bc69-3972c02ba0ac',
-        })
-    });
-
-    const api = 'https://182qx7479a.execute-api.eu-west-1.amazonaws.com/test';
-    const s3 = new AWS.S3({ params: { Bucket: 'media-recording-test-1' } });
+    const api = 'https://4xyvrr16b0.execute-api.eu-west-1.amazonaws.com/test'; // !!
     const source = document.getElementById('source');
-    const result = document.getElementById('result');
-    const resultContainer = document.getElementById('result-container');
     const start = document.getElementById('start');
     const stop = document.getElementById('stop');
 
@@ -62,46 +24,51 @@
         .then(stream => {
             let id;
             let chunks;
+            let currentChunkTimestamp;
+            window.t = [];
+
             const recorder = new MediaRecorder(stream);
-            recorder.ondataavailable = (e) => {
-                chunks.push(new Promise((resolve, reject) => {
-                    s3.upload({
-                        Key: `${id}/part_${Date.now()}`,
-                        Body: e.data
-                    }, (err, data) => {
-                        console.log(err, data);
-                        if (err) return reject(err);
-                        resolve(data);
-                    });
-                }));
+
+            recorder.onstart = () => {
+                stop.disabled = false;
+                currentChunkTimestamp = Date.now();
             };
+
+            recorder.onstop = () => {
+                start.disabled = false;
+                Promise.all(chunks)
+                    .then(() => fetch(`${api}/recordings/${id}`, {
+                        method: 'PATCH',
+                        headers: new Headers({'content-type': 'application/json'}),
+                        body: JSON.stringify({
+                            status: 'stopped'
+                        })
+                    }).then((r) => r.json()).then((json) => console.log(json)));
+            };
+
+            recorder.ondataavailable = (e) => {
+                chunks.push(fetch(`${api}/recordings/${id}/chunks/${currentChunkTimestamp}`, {
+                    method: 'PUT',
+                    body: e.data
+                }));
+
+                currentChunkTimestamp = Date.now();
+            };
+
             start.onclick = () => {
                 start.disabled = true;
                 chunks = [];
-                fetch(`${api}/session`, { method: 'post' })
+                fetch(`${api}/recordings`, { method: 'POST' })
                     .then((res) => res.json())
                     .then((uuid) => id = uuid)
                     .then(() => recorder.start(3000));
             };
+
             stop.onclick = () => {
                 stop.disabled = true;
-                resultContainer.classList.add('loading');
                 recorder.stop();
             };
-            recorder.onstart = () => stop.disabled = false;
-            recorder.onstop = () => {
-                start.disabled = false;
-                Promise.all(chunks)
-                    .then(() => fetch(`${api}/join`, {
-                        method: 'post',
-                        body: JSON.stringify({ id })
-                    }))
-                    .then((res) => res.json())
-                    .then((json) => {
-                        resultContainer.classList.remove('loading');
-                        result.src = json.Location;
-                    });
-            };
+
             source.src = URL.createObjectURL(stream);
             start.disabled = false;
         });
