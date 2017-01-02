@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
+</head>
+<body>
+<h1>Recordings</h1>
+<ul id="recordings"></ul>
+<script>
+    AWS.config.update({
+        region: 'eu-west-1',
+        credentials: new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: 'eu-west-1:7226bd45-eee4-4927-bc69-3972c02ba0ac',
+        })
+    });
+
+    const s3 = new AWS.S3({ params: { Bucket: 'media-recording-test-1' } });
+    const recsEl = document.getElementById('recordings');
+
+    s3.listObjectsV2({ Delimiter: '/' }, function (err, data) {
+        const recordings = data.CommonPrefixes.map((p) => p.Prefix);
+
+        for (const rec of recordings) {
+            const el = document.createElement('li');
+            el.innerHTML = `<a href="https://s3-eu-west-1.amazonaws.com/media-recording-test-1/${rec}joined.webm.reindexed.webm">
+${rec}<img  src="https://s3-eu-west-1.amazonaws.com/media-recording-test-1/${rec}joined.webm.reindexed.webm.thumb.png">
+</a>`;
+            recsEl.appendChild(el);
+        }
+    })
+</script>
+</body>
+</html>
