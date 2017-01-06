@@ -7,6 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Example Recorder</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
+    <script src="client.js"></script>
 </head>
 <body>
 <div>
@@ -22,47 +23,21 @@
 
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
-            let id;
-            let chunks;
-            let currentChunkTimestamp;
-            window.t = [];
+            const recorder = new recording.Recorder.default(stream);
 
-            const recorder = new MediaRecorder(stream);
+            recorder.on('start', (e) => {
+               console.log('STARTED:', e);
+            });
 
-            recorder.onstart = () => {
-                stop.disabled = false;
-                currentChunkTimestamp = Date.now();
-            };
+            recorder.on('stop', (e) => {
+                console.log('STOPPED:', e);
+            });
 
-            recorder.onstop = () => {
-                start.disabled = false;
-                Promise.all(chunks)
-                    .then(() => fetch(`${api}/recordings/${id}`, {
-                        method: 'PATCH',
-                        headers: new Headers({'content-type': 'application/json'}),
-                        body: JSON.stringify({
-                            status: 'stopped'
-                        })
-                    }).then((r) => r.json()).then((json) => console.log(json)));
-            };
+            recorder.on('chunk', (e) => {
+                console.log('CHUNK:', e);
+            });
 
-            recorder.ondataavailable = (e) => {
-                chunks.push(fetch(`${api}/recordings/${id}/chunks/${currentChunkTimestamp}`, {
-                    method: 'PUT',
-                    body: e.data
-                }));
-
-                currentChunkTimestamp = Date.now();
-            };
-
-            start.onclick = () => {
-                start.disabled = true;
-                chunks = [];
-                fetch(`${api}/recordings`, { method: 'POST' })
-                    .then((res) => res.json())
-                    .then((uuid) => id = uuid)
-                    .then(() => recorder.start(3000));
-            };
+            start.onclick = () => recorder.start(3000);
 
             stop.onclick = () => {
                 stop.disabled = true;

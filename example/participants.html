@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Participants</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.19.min.js"></script>
+</head>
+<body>
+<h1>Participants</h1>
+<ul id="groups"></ul>
+<script>
+    const groupsEl = document.getElementById('groups');
+
+    fetch('https://4xyvrr16b0.execute-api.eu-west-1.amazonaws.com/test/participants')
+        .then((r) => r.json())
+        .then((groups) => {
+            for(const group of groups) {
+                const el = document.createElement('li');
+                const first = group.shift();
+                el.innerHTML = [
+                    `<img  src="https://s3-eu-west-1.amazonaws.com/media-recording-test-1/${first.ExternalImageId}/joined.webm.reindexed.webm.thumb.png">`,
+                    group.map((match) => {
+                        return [
+                            `<img  src="https://s3-eu-west-1.amazonaws.com/media-recording-test-1/${match.Face.ExternalImageId}/joined.webm.reindexed.webm.thumb.png">`,
+                            `similarity: ${match.Similarity}`
+                        ].join('');
+                    }),
+                    '<hr>'
+                ].join('');
+                groupsEl.appendChild(el);
+            }
+        });
+</script>
+</body>
+</html>
