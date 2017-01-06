@@ -11,8 +11,7 @@ const rekognition = new AWS.Rekognition();
 
 
 export default λ(async (e) => {
-    return Promise.all(e.Records.map(async (record) => {
-        return rekognition.indexFaces({
+    return Promise.all(e.Records.map(async (record) => rekognition.indexFaces({
             CollectionId: 'media-recording-participants',
             ExternalImageId: record.s3.object.key.split('/')[0],
             Image: {
@@ -21,6 +20,6 @@ export default λ(async (e) => {
                     Name: record.s3.object.key
                 }
             }
-        }).promise();
-    }));
+        }).promise()
+    ));
 });
