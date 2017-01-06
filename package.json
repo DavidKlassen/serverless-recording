@@ -33,7 +33,9 @@
     "copy": "cp project.json.tpl build/project.json",
     "build": "npm run clean && npm run copy && webpack && chmod +x build/functions/**/*.bin",
     "deploy:apex": "apex -C build deploy",
-    "deploy": "npm run build && npm run deploy:apex"
+    "deploy": "npm run build && npm run deploy:apex",
+    "export-apex-tfvars": "apex -C build list --tfvars > infrastructure/apex.tfvars",
+    "infrastructure:provision": "terraform apply -var-file=infrastructure/apex.tfvars infrastructure"
   },
   "repository": {
     "type": "git",
