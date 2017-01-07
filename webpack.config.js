@@ -76,7 +76,7 @@ const client = {
     target: 'web',
     entry: './src/client',
     output: {
-        path: './example',
+        path: './build/static',
         filename: 'client.js',
         library: ['recording', 'Recorder']
     },

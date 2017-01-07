@@ -23,13 +23,15 @@
 
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
-            const recorder = new recording.Recorder.default(stream);
+            const recorder = new recording.Recorder.default(stream, { api });
 
             recorder.on('start', (e) => {
-               console.log('STARTED:', e);
+                stop.disabled = false;
+                console.log('STARTED:', e);
             });
 
             recorder.on('stop', (e) => {
+                start.disabled = false;
                 console.log('STOPPED:', e);
             });
 
@@ -37,7 +39,10 @@
                 console.log('CHUNK:', e);
             });
 
-            start.onclick = () => recorder.start(3000);
+            start.onclick = () => {
+                start.disabled = true;
+                recorder.start(3000);
+            };
 
             stop.onclick = () => {
                 stop.disabled = true;

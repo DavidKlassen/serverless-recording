@@ -30,9 +30,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf build/*",
-    "copy": "cp project.json.tpl build/project.json",
-    "build": "npm run clean && npm run copy && webpack && chmod +x build/functions/**/*.bin",
+    "copy:apex": "cp project.json.tpl build/project.json",
+    "copy:static": "cp -r ./src/static/* build/static",
+    "build": "npm run clean && npm run copy:apex && webpack && chmod +x build/functions/**/*.bin && npm run copy:static",
     "deploy:apex": "apex -C build deploy",
+    "deploy:api": "echo \"Error: not implemented\" && exit 1",
     "deploy": "npm run build && npm run deploy:apex",
     "export-apex-tfvars": "apex -C build list --tfvars > infrastructure/apex.tfvars",
     "infrastructure:provision": "terraform apply -var-file=infrastructure/apex.tfvars infrastructure"
